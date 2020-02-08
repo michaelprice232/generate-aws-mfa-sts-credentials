@@ -13,8 +13,10 @@ set -e
 SWITCH_ROLE_ARN='arn:aws:iam::<account-number>:role/<name>'
 
 # AWS profile which holds the credentials of the root account (which we are switching from)
-AWS_PROFILE='<profile>'
+export AWS_PROFILE='<profile>'
 
+# Session duration - must be <= the max allowed for the role
+SESSION_DURATION=7200   # 2 hours
 
 # Retrieve the MFA token as a parameter
 MFA_TOKEN=${1?"Please enter the MFA_TOKEN. Usage: $0 <MFA_TOKEN>"}
@@ -35,7 +37,7 @@ USERNAME=$(cut -d '/' -f2 <<< "${IAM_USER_ARN}")
 MFA_SERIAL_ARN=$(aws iam list-mfa-devices --user-name "${USERNAME}" | jq -r '.MFADevices[0].SerialNumber')
 
 # Assume the switch role, passing the MFA token
-RESPONSE=$(aws sts assume-role --role-arn "${SWITCH_ROLE_ARN}" --role-session-name "${USERNAME}-switch-role-session" --serial-number "${MFA_SERIAL_ARN}" --token-code "${MFA_TOKEN}")
+RESPONSE=$(aws sts assume-role --role-arn "${SWITCH_ROLE_ARN}" --role-session-name "${USERNAME}-switch-role-session" --duration-seconds "${SESSION_DURATION}" --serial-number "${MFA_SERIAL_ARN}" --token-code "${MFA_TOKEN}")
 AWS_ACCESS_KEY_ID=$(echo "${RESPONSE}" | jq -r '.Credentials.AccessKeyId')
 AWS_SECRET_ACCESS_KEY=$(echo "${RESPONSE}" | jq -r '.Credentials.SecretAccessKey')
 AWS_SESSION_TOKEN=$(echo "${RESPONSE}" | jq -r '.Credentials.SessionToken')
